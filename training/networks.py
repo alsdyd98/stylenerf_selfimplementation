@@ -1420,8 +1420,26 @@ class Encoder(torch.nn.Module):
 
 
 @persistence.persistent_class
+# class ResNetEncoder(torch.nn.Module):
+#     def __init__(self):
+#         super().__init__()
+
+#         import torchvision
+#         resnet_net = torchvision.models.resnet18(pretrained=True)
+#         modules = list(resnet_net.children())[:-1]
+#         self.convs = torch.nn.Sequential(*modules)
+#         self.requires_grad_(True)
+#         self.train()
+
+#     def preprocess_tensor(self, x):
+#         x = F.interpolate(x, size=(224, 224), mode='bicubic', align_corners=False)
+#         return x
+
+#     def forward(self, input):
+#         out = self.convs(self.preprocess_tensor(input))
+#         return out[:, :, 0, 0]
 class ResNetEncoder(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, size, n_latents, w_dim=512, add_dim=0, **unused):
         super().__init__()
 
         import torchvision
@@ -1430,14 +1448,26 @@ class ResNetEncoder(torch.nn.Module):
         self.convs = torch.nn.Sequential(*modules)
         self.requires_grad_(True)
         self.train()
+        self.size = size
+        self.n_latents = n_latents
+        self.w_dim = w_dim
+        self.add_dim = add_dim
+        self.projector = FullyConnectedLayer(512, self.n_latents*self.w_dim + add_dim, bias=False)
 
     def preprocess_tensor(self, x):
-        x = F.interpolate(x, size=(224, 224), mode='bicubic', align_corners=False)
+        x = F.interpolate(x, size=(self.size  , self.size ), mode='bicubic', align_corners=False)
         return x
 
     def forward(self, input):
-        out = self.convs(self.preprocess_tensor(input))
-        return out[:, :, 0, 0]
+        input = self.preprocess_tensor(input)
+        out = self.convs(input)
+        # return out[:, :, 0, 0]
+        out = self.projector(out[:, :, 0, 0])
+        pws, pcm = out[:, :-2], out[:, -2:]
+        pws = pws.view(len(input), self.n_latents, self.w_dim)
+        pcm = pcm.view(len(input), self.add_dim)
+        return pws, pcm
+
 
 
 @persistence.persistent_class
