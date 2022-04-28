@@ -6,6 +6,7 @@ https://github.com/pacifinapacific/StyleGAN_LatentEditor/blob/master/encode_imag
 
 """
 
+from cv2 import compare
 import numpy as np 
 import matplotlib.pyplot as plt 
 import os
@@ -27,7 +28,7 @@ import legacy
 import copy
 import pickle
 import PIL.Image
-
+import dlib
 from collections import OrderedDict
 from torchvision.utils import save_image
 from training.networks import Generator, ResNetEncoder
@@ -35,6 +36,7 @@ from renderer import Renderer
 from torch_utils import misc
 from torch_utils.ops import conv2d_gradfix
 from apps.alignment import align_face
+
 
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
@@ -93,7 +95,11 @@ def main(
 
     # Load target image.
     if 'gen' != target_fname[:3]:
-        target_pil = PIL.Image.open(target_fname).convert('RGB')
+        target_pil = dlib.load_rgb_image(target_fname)
+        #target_pil = PIL.Image.open(target_fname).convert('RGB')
+        print(np.array(target_pil).shape)
+        target_pil = align_face(target_pil, 1024)
+        # target_pil = PIL.Image.fromarray(target_pil)
         w, h = target_pil.size
         s = min(w, h)
         target_pil = target_pil.crop(((w - s) // 2, (h - s) // 2, (w + s) // 2, (h + s) // 2))
@@ -164,10 +170,32 @@ def main(
         optimizer.zero_grad()
         # kwargs['camera_matrices'] = G.synthesis.get_camera(1, device, cs)
         synth_image = G2(styles=ws, **kwargs)
+        compare_image = torch.tensor(synth_image.cpu())
+        compare_image = (compare_image + 1.0) / 2.0
+        #print(compare_image.numpy().min())
+        compare_image = compare_image.permute(0,2,3,1) * 255
+        compare_image = compare_image.squeeze()
+        
+        compare_image = compare_image.clamp(0, 255).to(torch.uint8)
+        #print(compare_image.numpy().shape)
+        compare_image = align_face(compare_image.numpy(), 1024)
+        compare_image = torch.tensor(np.array(compare_image).transpose([2, 0, 1]), device=device)
+        #compare_image = compare_image.transpose([2, 0, 1])
+        compare_image = compare_image.clone().unsqueeze(0).to(torch.float32) / 255.
+        compare_image = 2.0 * compare_image - 1.0
+        #print(target_image.size())
+
         synth_image = (synth_image + 1.0) / 2.0
         
+        
+        # mse_loss, perceptual_loss = caluclate_loss(
+        #     synth_image, target_image, target_features, perceptual_net, MSE_Loss)
+        #print(synth_image)
+        compare_image = compare_image.requires_grad_(True)
+        compare_image.grad_fn = synth_image.grad_fn
         mse_loss, perceptual_loss = caluclate_loss(
-            synth_image, target_image, target_features, perceptual_net, MSE_Loss)
+            compare_image, target_image, target_features, perceptual_net, MSE_Loss)
+
         mse_loss = mse_loss * l2_lambda
         perceptual_loss = perceptual_loss * pl_lambda
         loss= mse_loss + perceptual_loss

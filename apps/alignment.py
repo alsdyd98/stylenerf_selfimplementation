@@ -13,12 +13,13 @@ def get_landmark(img, predictor):
     detector = dlib.get_frontal_face_detector()
 
     # img = dlib.load_rgb_image(filepath)
+    #print(img)
     dets = detector(img, 1)
 
     for k, d in enumerate(dets):
-        shape = predictor(img, d)
+        shap = predictor(img, d)
 
-    t = list(shape.parts())
+    t = list(shap.parts())
     a = []
     for tt in t:
         a.append([tt.x, tt.y])
@@ -31,7 +32,7 @@ def align_face(img, output_size):
     :param filepath: str
     :return: PIL Image
     """
-    predictor = dlib.shape_predictor("./dlibtool/align.dat")
+    predictor = dlib.shape_predictor("./apps/dlibtool/align.dat")
     lm = get_landmark(img, predictor)
 
     lm_chin = lm[0: 17]  # left-right
@@ -65,7 +66,7 @@ def align_face(img, output_size):
 
     # read image
     # img = PIL.Image.open(filepath)
-
+    img = PIL.Image.fromarray(img)
     transform_size = output_size
     enable_padding = True
 
@@ -81,6 +82,8 @@ def align_face(img, output_size):
     border = max(int(np.rint(qsize * 0.1)), 3)
     crop = (int(np.floor(min(quad[:, 0]))), int(np.floor(min(quad[:, 1]))), int(np.ceil(max(quad[:, 0]))),
             int(np.ceil(max(quad[:, 1]))))
+
+    #print(crop)
     crop = (max(crop[0] - border, 0), max(crop[1] - border, 0), min(crop[2] + border, img.size[0]),
             min(crop[3] + border, img.size[1]))
     if crop[2] - crop[0] < img.size[0] or crop[3] - crop[1] < img.size[1]:
