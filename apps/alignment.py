@@ -6,13 +6,13 @@ import scipy.ndimage
 import dlib
 
 
-def get_landmark(filepath, predictor):
+def get_landmark(img, predictor):
     """get landmark with dlib
     :return: np.array shape=(68, 2)
     """
     detector = dlib.get_frontal_face_detector()
 
-    img = dlib.load_rgb_image(filepath)
+    # img = dlib.load_rgb_image(filepath)
     dets = detector(img, 1)
 
     for k, d in enumerate(dets):
@@ -26,13 +26,13 @@ def get_landmark(filepath, predictor):
     return lm
 
 
-def align_face(filepath, predictor, output_size):
+def align_face(img, output_size):
     """
     :param filepath: str
     :return: PIL Image
     """
-
-    lm = get_landmark(filepath, predictor)
+    predictor = dlib.shape_predictor("./dlibtool/align.dat")
+    lm = get_landmark(img, predictor)
 
     lm_chin = lm[0: 17]  # left-right
     lm_eyebrow_left = lm[17: 22]  # left-right
@@ -64,7 +64,7 @@ def align_face(filepath, predictor, output_size):
     qsize = np.hypot(*x) * 2
 
     # read image
-    img = PIL.Image.open(filepath)
+    # img = PIL.Image.open(filepath)
 
     transform_size = output_size
     enable_padding = True

@@ -34,6 +34,7 @@ from training.networks import Generator, ResNetEncoder
 from renderer import Renderer
 from torch_utils import misc
 from torch_utils.ops import conv2d_gradfix
+from apps.alignment import align_face
 
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
