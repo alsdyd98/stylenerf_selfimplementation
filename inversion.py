@@ -49,8 +49,8 @@ device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 @click.option('--seed',                   help='Random seed', type=int, default=333, show_default=True)
 @click.option('--save-video',             help='Save an mp4 video of optimization progress', type=bool, default=True, show_default=True)
 @click.option('--outdir',                 help='Where to save the output images', required=True, metavar='DIR')
-@click.option('--l2_lambda', default=1, type=float)
-@click.option('--pl_lambda', default=1, type=float)
+@click.option('--l2_lambda', default=1.9, type=float)
+@click.option('--pl_lambda', default=0.05, type=float)
 def main(
     network_pkl: str,
     encoder_pkl: str,
@@ -170,19 +170,19 @@ def main(
         optimizer.zero_grad()
         # kwargs['camera_matrices'] = G.synthesis.get_camera(1, device, cs)
         synth_image = G2(styles=ws, **kwargs)
-        compare_image = torch.tensor(synth_image.cpu())
-        compare_image = (compare_image + 1.0) / 2.0
-        #print(compare_image.numpy().min())
-        compare_image = compare_image.permute(0,2,3,1) * 255
-        compare_image = compare_image.squeeze()
+        # compare_image = torch.tensor(synth_image.cpu())
+        # compare_image = (compare_image + 1.0) / 2.0
+        # #print(compare_image.numpy().min())
+        # compare_image = compare_image.permute(0,2,3,1) * 255
+        # compare_image = compare_image.squeeze()
         
-        compare_image = compare_image.clamp(0, 255).to(torch.uint8)
-        #print(compare_image.numpy().shape)
-        compare_image = align_face(compare_image.numpy(), 1024)
-        compare_image = torch.tensor(np.array(compare_image).transpose([2, 0, 1]), device=device)
-        #compare_image = compare_image.transpose([2, 0, 1])
-        compare_image = compare_image.clone().unsqueeze(0).to(torch.float32) / 255.
-        compare_image = 2.0 * compare_image - 1.0
+        # compare_image = compare_image.clamp(0, 255).to(torch.uint8)
+        # #print(compare_image.numpy().shape)
+        # compare_image = align_face(compare_image.numpy(), 1024)
+        # compare_image = torch.tensor(np.array(compare_image).transpose([2, 0, 1]), device=device)
+        # #compare_image = compare_image.transpose([2, 0, 1])
+        # compare_image = compare_image.clone().unsqueeze(0).to(torch.float32) / 255.
+        # compare_image = 2.0 * compare_image - 1.0
         #print(target_image.size())
 
         synth_image = (synth_image + 1.0) / 2.0
@@ -191,10 +191,11 @@ def main(
         # mse_loss, perceptual_loss = caluclate_loss(
         #     synth_image, target_image, target_features, perceptual_net, MSE_Loss)
         #print(synth_image)
-        compare_image = compare_image.requires_grad_(True)
-        compare_image.grad_fn = synth_image.grad_fn
+        # compare_image = compare_image.requires_grad_(True)
+        # synth_image = synth_image * 0
+        # synth_image = synth_image + compare_image
         mse_loss, perceptual_loss = caluclate_loss(
-            compare_image, target_image, target_features, perceptual_net, MSE_Loss)
+            synth_image, target_image, target_features, perceptual_net, MSE_Loss)
 
         mse_loss = mse_loss * l2_lambda
         perceptual_loss = perceptual_loss * pl_lambda
