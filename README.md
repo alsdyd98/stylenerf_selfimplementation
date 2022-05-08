@@ -1,3 +1,6 @@
+# How to use
+Same as below Official document.
+
 # StyleNeRF: A Style-based 3D-Aware Generator for High-resolution Image Synthesis</sub>
 
 ![Random Sample](./docs/random_sample.jpg)
