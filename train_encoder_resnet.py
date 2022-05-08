@@ -1,8 +1,4 @@
-
-   
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
-import sys
-sys.path.append('/nfs/home/uss00022/lelechen/github/StyleNeRF')
 
 from random import random
 from dnnlib import camera
@@ -141,8 +137,6 @@ def main(data, outdir, g_ckpt, e_ckpt,
         D = network['D'].requires_grad_(False).to(device)
     G = copy.deepcopy(G).eval().requires_grad_(False).to(device)
     D = copy.deepcopy(D).eval().requires_grad_(False).to(device)
-    # E = ResNetEncoder().to(device)
-
     E = ResNetEncoder(G.img_resolution, G.mapping.num_ws, G.mapping.w_dim, add_dim=2).to(device)
     E_optim = optim.Adam(E.parameters(), lr=lr, betas=(0.9, 0.99))
     requires_grad(E, True)
@@ -175,8 +169,8 @@ def main(data, outdir, g_ckpt, e_ckpt,
             w_samples = ws_avg + (w_samples - ws_avg) * truncation
         camera_matrices = G.synthesis.get_camera(batch, device, mode=c_samples)
         gen_img = G.get_final_output(styles=w_samples, camera_matrices=camera_matrices)
-        rec_ws, rec_cm = E(gen_img)
-        # rec_ws = G.mapping(rec_zs, None)
+        rec_zs, rec_cm = E(gen_img)
+        rec_ws = G.mapping(rec_zs, None)
 
         loss_dict['loss_ws'] = F.smooth_l1_loss(rec_ws, w_samples).mean()
         loss_dict['loss_cm'] = F.smooth_l1_loss(rec_cm, c_samples).mean()
